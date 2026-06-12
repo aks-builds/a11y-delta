@@ -99,3 +99,22 @@ test('validateSnapshot throws on missing violations array', () => {
     /Invalid snapshot/
   );
 });
+
+test('makeSnapshot throws TypeError when url is null', () => {
+  assert.throws(
+    () => makeSnapshot(null, []),
+    { name: 'TypeError' }
+  );
+});
+
+test('makeSnapshot throws TypeError when url is undefined', () => {
+  assert.throws(
+    () => makeSnapshot(undefined, []),
+    { name: 'TypeError' }
+  );
+});
+
+test('makeSnapshot preserves file:// URI without calling resolve', () => {
+  const vs = makeSnapshot('file:///tmp/snapshot.json', []);
+  assert.equal(vs.url, 'file:///tmp/snapshot.json');
+});
