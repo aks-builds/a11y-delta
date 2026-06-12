@@ -102,3 +102,29 @@ test('CLI --fail-on critical exits 1 for new critical violation', () => {
   const { exitCode } = run(`--baseline "${BASELINE}" --candidate "${NEW_V}" --fail-on critical`, true);
   assert.equal(exitCode, 1);
 });
+
+test('CLI default --fail-on exits 1 for new serious violation (not just critical)', async () => {
+  // Build a candidate snapshot in-memory by writing a temp file with a serious violation
+  const { writeFile, unlink } = await import('node:fs/promises');
+  const { join: j } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const emptyBaseline = j(tmpdir(), 'a11y-empty-baseline.json');
+  const seriousCandidate = j(tmpdir(), 'a11y-serious-candidate.json');
+  await writeFile(emptyBaseline, JSON.stringify({ url: 'x', timestamp: 'y', violations: [] }));
+  await writeFile(seriousCandidate, JSON.stringify({
+    url: 'x', timestamp: 'y',
+    violations: [{
+      id: 'color-contrast', impact: 'serious',
+      description: 'd', helpUrl: 'h',
+      nodes: [{ target: ['button'], html: '<button>', failureSummary: 'f' }]
+    }]
+  }));
+  try {
+    // Default --fail-on is critical,serious — a new serious violation must exit 1
+    const { exitCode } = run(`--baseline "${emptyBaseline}" --candidate "${seriousCandidate}"`, true);
+    assert.equal(exitCode, 1, 'default --fail-on critical,serious must exit 1 for a new serious violation');
+  } finally {
+    await unlink(emptyBaseline).catch(() => {});
+    await unlink(seriousCandidate).catch(() => {});
+  }
+});

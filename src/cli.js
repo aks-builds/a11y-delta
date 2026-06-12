@@ -18,7 +18,7 @@ try {
       timeout:    { type: 'string',  default: '30000' },
       viewport:   { type: 'string',  default: '1280x800' },
       'wait-for': { type: 'string' },
-      header:     { type: 'string' },
+      header:     { type: 'string', multiple: true },
       help:       { type: 'boolean', short: 'h', default: false },
     },
     allowPositionals: false,
@@ -72,11 +72,11 @@ const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'];
 const failOnThresholds = (argv['fail-on'] ?? 'critical,serious')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
-// Lowest severity index among the listed thresholds = broadest trigger.
-const failOnMinIndex = Math.min(
+// Highest index among the listed thresholds = least-severe threshold = broadest trigger.
+const failOnMinIndex = Math.max(
   ...failOnThresholds.map(t => {
     const i = IMPACT_ORDER.indexOf(t);
-    return i === -1 ? Infinity : i;
+    return i === -1 ? -Infinity : i;
   })
 );
 
