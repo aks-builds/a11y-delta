@@ -1,0 +1,32 @@
+{
+  "url": "https://example.com",
+  "timestamp": "2026-06-12T11:00:00.000Z",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "description": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast",
+      "nodes": [
+        {
+          "target": ["button.cta-primary"],
+          "html": "<button class=\"cta-primary\">Buy now</button>",
+          "failureSummary": "Fix any of the following: Element has insufficient color contrast"
+        }
+      ]
+    },
+    {
+      "id": "aria-label",
+      "impact": "critical",
+      "description": "Ensures every form element has a label",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label",
+      "nodes": [
+        {
+          "target": ["input[name=\"email\"]"],
+          "html": "<input name=\"email\" type=\"email\">",
+          "failureSummary": "Fix any of the following: Form element does not have an implicit (wrapped) <label>"
+        }
+      ]
+    }
+  ]
+}

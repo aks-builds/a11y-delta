@@ -18,7 +18,7 @@
   "author": "aks-builds <its.aks@outlook.com>",
   "license": "MIT",
   "scripts": {
-    "test": "node -e \"const fs=require('fs'),g=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?g(d+'/'+e.name):[d+'/'+e.name]);try{const f=g('tests').filter(f=>f.endsWith('.test.js'));if(f.length)process.exit(require('child_process').spawnSync(process.execPath,['--test','tests/'],{stdio:'inherit'}).status||0);}catch{process.exit(0)}\"",
+    "test": "node -e \"const fs=require('fs'),g=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?g(d+'/'+e.name):[d+'/'+e.name]);try{const f=g('tests').filter(f=>f.endsWith('.test.js'));if(f.length)process.exit(require('child_process').spawnSync(process.execPath,['--test',...f],{stdio:'inherit'}).status||0);}catch{process.exit(0)}\"",
     "test:watch": "node --test --watch tests/"
   },
   "dependencies": {
