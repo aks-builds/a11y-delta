@@ -64,7 +64,7 @@ jobs:
           gh pr create \
             --title "release: v${{ steps.bump.outputs.version }}" \
             --body "Automated release bump to v${{ steps.bump.outputs.version }}" \
-            --base master \
+            --base main \
             --head "$BRANCH"
           gh pr merge --auto --squash
         env:
