@@ -43,14 +43,14 @@ test('expand handles violation with multiple nodes', () => {
   assert.equal(expand(vs).length, 2);
 });
 
-test('violationKey produces stable string', () => {
+test('violationKey produces stable string with length prefix', () => {
   const key = violationKey({ id: 'color-contrast', target: ['button.cta-primary'] });
-  assert.equal(key, 'color-contrast::button.cta-primary');
+  assert.equal(key, 'color-contrast::1:button.cta-primary');
 });
 
-test('violationKey joins multi-selector target with pipe', () => {
+test('violationKey joins multi-selector target with pipe and length prefix', () => {
   const key = violationKey({ id: 'label', target: ['form', 'input[name="q"]'] });
-  assert.equal(key, 'label::form|input[name="q"]');
+  assert.equal(key, 'label::2:form|input[name="q"]');
 });
 
 test('diff returns empty array when candidate has same violations as baseline', async () => {
@@ -80,4 +80,49 @@ test('diff returns all entries when baseline is empty', async () => {
   const empty     = { url: 'x', timestamp: 'y', violations: [] };
   const candidate = await readSnapshot(NEW_V);
   assert.equal(diff(empty, candidate).length, 3);
+});
+
+test('violationKey with empty target does not collide with single-empty-string target', () => {
+  const keyEmpty  = violationKey({ id: 'foo', target: [] });
+  const keySingle = violationKey({ id: 'foo', target: [''] });
+  assert.notEqual(keyEmpty, keySingle);
+});
+
+test('expand returns empty array for violation with zero nodes', () => {
+  const vs = {
+    url: 'x', timestamp: 'y',
+    violations: [{ id: 'foo', impact: 'minor', description: 'd', helpUrl: 'h', nodes: [] }]
+  };
+  assert.equal(expand(vs).length, 0);
+});
+
+test('expand uses empty string for missing failureSummary', () => {
+  const vs = {
+    url: 'x', timestamp: 'y',
+    violations: [{
+      id: 'foo', impact: 'minor', description: 'd', helpUrl: 'h',
+      nodes: [{ target: ['a'], html: '<a>' }]  // no failureSummary
+    }]
+  };
+  assert.equal(expand(vs)[0].failureSummary, '');
+});
+
+test('diff deduplicates when candidate has same node twice', async () => {
+  const baseline  = await readSnapshot(BASELINE);
+  // Manually create a candidate with image-alt appearing twice on the same element
+  const candidate = {
+    url: 'x', timestamp: 'y',
+    violations: [
+      {
+        id: 'image-alt', impact: 'critical', description: 'd', helpUrl: 'h',
+        nodes: [
+          { target: ['img.hero'], html: '<img>', failureSummary: 'f' },
+          { target: ['img.hero'], html: '<img>', failureSummary: 'f' }, // duplicate
+        ]
+      }
+    ]
+  };
+  const result = diff(baseline, candidate);
+  assert.equal(result.length, 1, 'duplicate nodes should be deduplicated to one');
+  assert.equal(result[0].id, 'image-alt');
 });

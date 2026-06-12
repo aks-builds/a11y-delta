@@ -24,23 +24,32 @@ export function expand(violationSet) {
 
 /**
  * Stable identity key for a violation entry.
- * Format: "ruleId::selector1|selector2"
- * target is an array of CSS selector strings (may be a frame path in nested iframes).
- * The '|' separator is stable and human-readable.
+ * Format: "ruleId::N:selector1|selector2"
+ * where N is the number of selectors in target — prevents collisions between
+ * an empty target ([]) and a single-empty-string target (['']) which both
+ * join to the same string without the length prefix.
  * @param {{ id: string, target: string[] }} entry
  * @returns {string}
  */
 export function violationKey(entry) {
-  return `${entry.id}::${entry.target.join('|')}`;
+  return `${entry.id}::${entry.target.length}:${entry.target.join('|')}`;
 }
 
 /**
  * Return entries present in candidate but NOT in baseline.
+ * Deduplicates candidate entries so that the same node appearing more than
+ * once in the candidate snapshot is counted only once in the output.
  * @param {{ violations: Array }} baseline
  * @param {{ violations: Array }} candidate
  * @returns {Array} new violation entries
  */
 export function diff(baseline, candidate) {
   const baselineKeys = new Set(expand(baseline).map(violationKey));
-  return expand(candidate).filter(e => !baselineKeys.has(violationKey(e)));
+  const seen = new Set();
+  return expand(candidate).filter(e => {
+    const k = violationKey(e);
+    if (baselineKeys.has(k) || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
