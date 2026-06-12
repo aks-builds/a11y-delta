@@ -19,7 +19,8 @@ export function renderTable(newViolations, baselineMeta, candidateMeta) {
   lines.push('');
 
   if (count > 0) {
-    const col = (s, w) => String(s ?? '').padEnd(w);
+    const trunc = (s, w) => s.length > w ? s.slice(0, w - 1) + '…' : s;
+    const col   = (s, w) => trunc(String(s ?? ''), w).padEnd(w);
     const W = { impact: 10, rule: 30, element: 40 };
     lines.push(`${col('Impact', W.impact)}  ${col('Rule', W.rule)}  ${col('Element', W.element)}`);
     lines.push(`${'─'.repeat(W.impact)}  ${'─'.repeat(W.rule)}  ${'─'.repeat(W.element)}`);
@@ -65,9 +66,10 @@ export function renderGithubComment(newViolations, baselineMeta, candidateMeta) 
   lines.push('| Impact | Rule | Element | Help |');
   lines.push('|---|---|---|---|');
 
+  const mdEscape = s => s.replace(/`/g, '\\`').replace(/\|/g, '\\|');
   for (const v of newViolations) {
     const emoji   = IMPACT_EMOJI[v.impact] ?? '⚪';
-    const element = v.target.join(', ');
+    const element = mdEscape(v.target.join(', '));
     lines.push(`| ${emoji} ${v.impact} | \`${v.id}\` | \`${element}\` | [docs](${v.helpUrl}) |`);
   }
 

@@ -17,6 +17,17 @@ const ONE_NEW = [
 ];
 const EMPTY = [];
 
+const SHADOW_TARGET = [
+  {
+    id: 'color-contrast', impact: 'serious',
+    description: 'Elements must meet minimum color contrast ratio thresholds',
+    helpUrl: 'https://dequeuniversity.com/rules/axe/4.10/color-contrast',
+    target: ['div.card', 'span.label'],
+    html: '<span class="label">text</span>',
+    failureSummary: 'Fix: insufficient color contrast',
+  }
+];
+
 // ── renderTable ───────────────────────────────────────────────────────────
 
 test('renderTable with violations includes violation id', () => {
@@ -87,4 +98,28 @@ test('renderJson with no violations has exitCode 0 and empty array', () => {
   assert.equal(p.exitCode, 0);
   assert.equal(p.newViolations.length, 0);
   assert.equal(p.newCount, 0);
+});
+
+test('renderTable joins multi-element target with comma', () => {
+  const out = renderTable(SHADOW_TARGET, BASE_META, CAND_META);
+  assert.ok(out.includes('div.card'));
+  assert.ok(out.includes('span.label'));
+});
+
+test('renderGithubComment joins multi-element target in cell', () => {
+  const out = renderGithubComment(SHADOW_TARGET, BASE_META, CAND_META);
+  assert.ok(out.includes('div.card'));
+  assert.ok(out.includes('span.label'));
+});
+
+test('renderGithubComment escapes pipe in target selector', () => {
+  const withPipe = [{
+    id: 'label', impact: 'critical',
+    description: 'd', helpUrl: 'https://x.com',
+    target: ['input[lang|=en]'],
+    html: '<input>', failureSummary: 'f',
+  }];
+  const out = renderGithubComment(withPipe, BASE_META, CAND_META);
+  // The pipe in the selector should be escaped so it doesn't break the markdown table
+  assert.ok(out.includes('\\|'), 'pipe in selector must be escaped');
 });
