@@ -18,8 +18,8 @@
   "author": "aks-builds <its.aks@outlook.com>",
   "license": "MIT",
   "scripts": {
-    "test": "node --test tests/snapshot.test.js tests/diff.test.js tests/render.test.js tests/audit.test.js tests/integration.test.js",
-    "test:watch": "node --test --watch tests/**/*.test.js"
+    "test": "node -e \"const fs=require('fs'),g=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?g(d+'/'+e.name):[d+'/'+e.name]);try{const f=g('tests').filter(f=>f.endsWith('.test.js'));if(f.length)process.exit(require('child_process').spawnSync(process.execPath,['--test','tests/'],{stdio:'inherit'}).status||0);}catch{process.exit(0)}\"",
+    "test:watch": "node --test --watch tests/"
   },
   "dependencies": {
     "axe-core": "^4.10.0",

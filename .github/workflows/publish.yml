@@ -28,8 +28,8 @@ jobs:
 
       - name: Configure git identity
         run: |
-          git config user.name "aks-builds"
-          git config user.email "its.aks@outlook.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - run: npm ci
 
