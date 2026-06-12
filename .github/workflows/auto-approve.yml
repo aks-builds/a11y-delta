@@ -1,0 +1,14 @@
+name: Auto-approve
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  call:
+    uses: aks-builds/workflows/.github/workflows/auto-approve.yml@main
+    secrets: inherit

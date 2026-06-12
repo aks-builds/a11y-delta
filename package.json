@@ -1,0 +1,43 @@
+{
+  "name": "a11y-delta",
+  "version": "0.0.1",
+  "description": "Accessibility audit delta — catch only new axe violations, powered by Playwright",
+  "type": "module",
+  "bin": {
+    "a11y-delta": "src/cli.js"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "aks-builds <its.aks@outlook.com>",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/snapshot.test.js tests/diff.test.js tests/render.test.js tests/audit.test.js tests/integration.test.js",
+    "test:watch": "node --test --watch tests/**/*.test.js"
+  },
+  "dependencies": {
+    "axe-core": "^4.10.0",
+    "playwright": "^1.52.0"
+  },
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "axe-core",
+    "playwright",
+    "wcag",
+    "ci",
+    "devtools",
+    "eaa",
+    "accessibility-testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aks-builds/a11y-delta"
+  }
+}
