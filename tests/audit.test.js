@@ -42,3 +42,10 @@ test('buildAuditConfig includes provided headers', () => {
   const cfg = buildAuditConfig({ headers: { Authorization: 'Bearer tok' } });
   assert.deepEqual(cfg.extraHTTPHeaders, { Authorization: 'Bearer tok' });
 });
+
+test('buildAuditConfig throws RangeError for invalid viewport string', () => {
+  assert.throws(
+    () => buildAuditConfig({ viewport: 'badxbad' }),
+    { name: 'RangeError' }
+  );
+});

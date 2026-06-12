@@ -9,6 +9,9 @@ import { readFileSync }  from 'node:fs';
  */
 export function buildAuditConfig(opts = {}) {
   const [w, h] = (opts.viewport ?? '1280x800').split('x').map(Number);
+  if (!Number.isFinite(w) || !Number.isFinite(h)) {
+    throw new RangeError(`Invalid viewport "${opts.viewport}": expected WxH format, e.g. "1280x800"`);
+  }
   return {
     browserType:      'chromium',
     launchOptions:    { headless: true },
@@ -24,7 +27,11 @@ export function buildAuditConfig(opts = {}) {
  */
 function axeCorePath() {
   const require = createRequire(import.meta.url);
-  return require.resolve('axe-core');
+  try {
+    return require.resolve('axe-core');
+  } catch {
+    throw new Error('axe-core is not installed. Run: npm install axe-core');
+  }
 }
 
 /**
