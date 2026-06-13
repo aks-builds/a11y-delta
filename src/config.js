@@ -32,7 +32,7 @@ export function mergeConfig(fileConfig, cliArgs) {
   return {
     base:             cliArgs.base              ?? fileConfig.base              ?? null,
     'candidate-base': cliArgs['candidate-base'] ?? fileConfig['candidate-base'] ?? null,
-    pages:            fileConfig.pages          ?? [],
+    pages:            cliArgs.pages             ?? fileConfig.pages ?? [],
     concurrency,
     'fail-on':        cliArgs['fail-on']        ?? fileConfig['fail-on']        ?? 'critical,serious',
     'save-dir':       cliArgs['save-dir']       ?? fileConfig['save-dir']       ?? null,
