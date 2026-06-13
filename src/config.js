@@ -34,16 +34,21 @@ export function mergeConfig(fileConfig, cliArgs) {
   if (!Number.isFinite(timeout) || timeout < 0) {
     throw new Error('timeout must be a non-negative number in milliseconds');
   }
+  const rawPages = cliArgs.pages ?? fileConfig.pages ?? [];
+  if (!Array.isArray(rawPages)) {
+    throw new Error('config `pages` must be a YAML list (e.g., `- /path/` on each line)');
+  }
+  const pages = rawPages;
   return {
     base:             cliArgs.base              ?? fileConfig.base              ?? null,
     'candidate-base': cliArgs['candidate-base'] ?? fileConfig['candidate-base'] ?? null,
-    pages:            cliArgs.pages             ?? fileConfig.pages ?? [],
+    pages,
     concurrency,
     'fail-on':        cliArgs['fail-on']        ?? fileConfig['fail-on']        ?? 'critical,serious',
     'save-dir':       cliArgs['save-dir']       ?? fileConfig['save-dir']       ?? null,
     'output-style':   cliArgs['output-style']   ?? fileConfig['output-style']   ?? 'per-page',
-    sitemap:          cliArgs.sitemap           ?? null,
-    urls:             cliArgs.urls              ?? null,
+    sitemap:          cliArgs.sitemap           || fileConfig.sitemap            || null,
+    urls:             cliArgs.urls              || fileConfig.urls               || null,
     baseline:         cliArgs.baseline          ?? null,
     candidate:        cliArgs.candidate         ?? null,
     timeout,

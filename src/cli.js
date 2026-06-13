@@ -14,11 +14,11 @@ try {
     options: {
       baseline:         { type: 'string',  short: 'b' },
       candidate:        { type: 'string',  short: 'c' },
-      'fail-on':        { type: 'string',  default: 'critical,serious' },
-      format:           { type: 'string',  short: 'f', default: 'table' },
+      'fail-on':        { type: 'string' },
+      format:           { type: 'string',  short: 'f' },
       save:             { type: 'string' },
-      timeout:          { type: 'string',  default: '30000' },
-      viewport:         { type: 'string',  default: '1280x800' },
+      timeout:          { type: 'string' },
+      viewport:         { type: 'string' },
       'wait-for':       { type: 'string' },
       header:           { type: 'string',  multiple: true },
       help:             { type: 'boolean', short: 'h', default: false },
@@ -26,10 +26,10 @@ try {
       urls:             { type: 'string' },
       base:             { type: 'string' },
       'candidate-base': { type: 'string' },
-      concurrency:      { type: 'string',  default: '3' },
+      concurrency:      { type: 'string' },
       config:           { type: 'string' },
       'save-dir':       { type: 'string' },
-      'output-style':   { type: 'string',  default: 'per-page' },
+      'output-style':   { type: 'string' },
     },
     allowPositionals: false,
     strict: false,
@@ -91,7 +91,14 @@ try {
 
 // ── Multi-page mode ──────────────────────────────────────────────────────────
 
-const isMulti = !!(merged.sitemap || merged.urls || (merged.pages.length > 0 && merged['candidate-base']));
+const hasPageSource = !!(merged.sitemap || merged.urls || merged.pages.length > 0);
+const isMulti = hasPageSource && !!merged['candidate-base'];
+
+// If candidate-base is set but no page source, give a useful error
+if (merged['candidate-base'] && !hasPageSource) {
+  process.stderr.write('Error: --candidate-base requires a page source (--sitemap, --urls, or pages in config)\n');
+  process.exit(2);
+}
 
 if (isMulti) {
   try {
@@ -128,6 +135,13 @@ const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'];
 
 const failOnThresholds = (merged['fail-on'] ?? 'critical,serious')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+const VALID_IMPACTS = ['critical', 'serious', 'moderate', 'minor'];
+const unknownImpacts = failOnThresholds.filter(t => !VALID_IMPACTS.includes(t));
+if (unknownImpacts.length > 0) {
+  process.stderr.write(`Error: Unknown fail-on value(s): ${unknownImpacts.join(', ')}. Valid values: ${VALID_IMPACTS.join(', ')}\n`);
+  process.exit(2);
+}
 
 const failOnMinIndex = Math.max(
   ...failOnThresholds.map(t => {
