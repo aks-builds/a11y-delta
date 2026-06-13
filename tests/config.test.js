@@ -1,7 +1,7 @@
 // tests/config.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFile, unlink, mkdir, rm } from 'node:fs/promises';
+import { writeFile, unlink, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadConfig, mergeConfig } from '../src/config.js';
@@ -41,7 +41,7 @@ test('loadConfig throws with informative message on invalid YAML', async () => {
   const f = join(TMP, 'bad.yml');
   await writeFile(f, 'key: [unclosed bracket\n');
   try {
-    await assert.rejects(() => loadConfig(f), /Invalid .a11y-delta.yml/);
+    await assert.rejects(() => loadConfig(f), /Invalid \.a11y-delta\.yml/);
   } finally {
     await unlink(f).catch(() => {});
   }

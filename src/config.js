@@ -29,6 +29,11 @@ export function mergeConfig(fileConfig, cliArgs) {
   if (!Number.isInteger(concurrency) || concurrency < 1) {
     throw new Error('concurrency must be a positive integer');
   }
+  const rawTimeout = cliArgs.timeout ?? fileConfig.timeout ?? '30000';
+  const timeout = parseInt(String(rawTimeout), 10);
+  if (!Number.isFinite(timeout) || timeout < 0) {
+    throw new Error('timeout must be a non-negative number in milliseconds');
+  }
   return {
     base:             cliArgs.base              ?? fileConfig.base              ?? null,
     'candidate-base': cliArgs['candidate-base'] ?? fileConfig['candidate-base'] ?? null,
@@ -41,11 +46,11 @@ export function mergeConfig(fileConfig, cliArgs) {
     urls:             cliArgs.urls              ?? null,
     baseline:         cliArgs.baseline          ?? null,
     candidate:        cliArgs.candidate         ?? null,
-    timeout:          parseInt(String(cliArgs.timeout ?? '30000'), 10),
-    viewport:         cliArgs.viewport          ?? '1280x800',
-    'wait-for':       cliArgs['wait-for']       ?? null,
+    timeout,
+    viewport:         cliArgs.viewport          ?? fileConfig.viewport          ?? '1280x800',
+    'wait-for':       cliArgs['wait-for']       ?? fileConfig['wait-for']       ?? null,
     header:           [cliArgs.header ?? []].flat().filter(Boolean),
-    format:           cliArgs.format            ?? 'table',
-    save:             cliArgs.save              ?? null,
+    format:           cliArgs.format            ?? fileConfig.format            ?? 'table',
+    save:             cliArgs.save              ?? fileConfig.save              ?? null,
   };
 }
