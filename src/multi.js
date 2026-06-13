@@ -11,10 +11,12 @@ const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'];
 function failOnMinIndex(failOn) {
   const thresholds = (failOn ?? 'critical,serious')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  return Math.max(...thresholds.map(t => {
-    const i = IMPACT_ORDER.indexOf(t);
-    return i === -1 ? -Infinity : i;
-  }));
+  const indices = thresholds.map(t => IMPACT_ORDER.indexOf(t));
+  const unknown = thresholds.filter((_, i) => indices[i] === -1);
+  if (unknown.length > 0) {
+    throw new Error(`Unknown fail-on value(s): ${unknown.join(', ')}. Valid values: ${IMPACT_ORDER.join(', ')}`);
+  }
+  return Math.max(...indices);
 }
 
 function aggregate(pageResults, minIdx) {
@@ -58,10 +60,14 @@ export async function runMulti(mergedConfig, { auditFn = auditUrl } = {}) {
     viewport: mergedConfig.viewport ?? '1280x800',
     waitFor:  mergedConfig['wait-for'],
     headers:  Object.fromEntries(
-      (mergedConfig.header ?? []).map(h => {
+      (mergedConfig.header ?? []).flatMap(h => {
         const i = h.indexOf(':');
-        return i > 0 ? [h.slice(0, i).trim(), h.slice(i + 1).trim()] : null;
-      }).filter(Boolean)
+        if (i <= 0) {
+          process.stderr.write(`Warning: ignoring malformed header (missing ":"): "${h}"\n`);
+          return [];
+        }
+        return [[h.slice(0, i).trim(), h.slice(i + 1).trim()]];
+      })
     ),
   };
 

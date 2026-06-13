@@ -111,6 +111,13 @@ test('runMulti throws when no pages resolve', async () => {
   await assert.rejects(() => runMulti(cfg, { auditFn: fixtureAudit }), /No pages/);
 });
 
+test('runMulti throws for unknown fail-on value', async () => {
+  await assert.rejects(
+    () => runMulti({ ...BASE_CONFIG, 'fail-on': 'high' }, { auditFn: fixtureAudit }),
+    /Unknown fail-on value/
+  );
+});
+
 test('runMulti respects fail-on threshold (critical only does not exit 1 for serious)', async () => {
   const vsWithSerious = {
     url: 'x', timestamp: 't',
