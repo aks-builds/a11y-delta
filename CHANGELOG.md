@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-13
+
 ### Added
 - Multi-page coverage: audit N pages in one command via `--sitemap`, `--urls`, or `.a11y-delta.yml`
 - `--base` and `--candidate-base` flags for multi-page base URLs
