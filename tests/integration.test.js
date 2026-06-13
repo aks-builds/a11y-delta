@@ -131,18 +131,16 @@ test('CLI default --fail-on exits 1 for new serious violation (not just critical
 
 // ── Multi-page CLI tests ─────────────────────────────────────────────────────
 
-const SNAP_DIR = join(__dirname, 'fixtures', 'snapshots-baseline');
-
 test('CLI exits 2 when --urls given without --candidate-base', () => {
   const { exitCode, stderr } = run(`--urls "/,/products/" --base "https://staging.example.com"`, true);
   assert.equal(exitCode, 2);
-  assert.ok(stderr.includes('candidate-base'));
+  assert.ok(stderr.includes('--candidate-base') && (stderr.includes('--sitemap') || stderr.includes('--urls')));
 });
 
 test('CLI exits 2 when --sitemap given without --candidate-base', () => {
   const { exitCode, stderr } = run(`--sitemap "https://staging.example.com/sitemap.xml"`, true);
   assert.equal(exitCode, 2);
-  assert.ok(stderr.includes('candidate-base'));
+  assert.ok(stderr.includes('--candidate-base') && (stderr.includes('--sitemap') || stderr.includes('--urls')));
 });
 
 test('CLI exits 2 when --urls file does not exist', () => {
@@ -151,7 +149,7 @@ test('CLI exits 2 when --urls file does not exist', () => {
     true
   );
   assert.equal(exitCode, 2);
-  assert.ok(stderr.includes('not found') || stderr.includes('Error'));
+  assert.ok(stderr.includes('URLs file not found') || stderr.includes('not found'));
 });
 
 test('CLI exits 2 when --config points to a missing file', () => {
@@ -160,7 +158,7 @@ test('CLI exits 2 when --config points to a missing file', () => {
     true
   );
   assert.equal(exitCode, 2);
-  assert.ok(stderr.includes('not found') || stderr.includes('Error'));
+  assert.ok(stderr.includes('Config file not found') || stderr.includes('not found'));
 });
 
 test('CLI exits 2 when --concurrency is 0', () => {
@@ -169,7 +167,13 @@ test('CLI exits 2 when --concurrency is 0', () => {
     true
   );
   assert.equal(exitCode, 2);
-  assert.ok(stderr.includes('positive integer') || stderr.includes('Error'));
+  assert.ok(stderr.includes('positive integer'));
+});
+
+test('CLI exits 2 when --candidate-base given without any page source', () => {
+  const { exitCode, stderr } = run(`--candidate-base "https://preview.example.com"`, true);
+  assert.equal(exitCode, 2);
+  assert.ok(stderr.includes('--candidate-base') || stderr.includes('page source'));
 });
 
 test('CLI --help includes multi-page flags', () => {

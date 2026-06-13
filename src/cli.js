@@ -91,18 +91,21 @@ try {
 
 // ── Multi-page mode ──────────────────────────────────────────────────────────
 
-const hasPageSource = !!(merged.sitemap || merged.urls || merged.pages.length > 0);
-const isMulti = hasPageSource && !!merged['candidate-base'];
+// Explicit CLI page sources (sitemap or urls flag)
+const hasExplicitPageSource = !!(merged.sitemap || merged.urls);
+// Config pages (from .a11y-delta.yml) only count when candidate-base is also set
+const hasConfigPages = merged.pages.length > 0;
+const isMulti = (hasExplicitPageSource || hasConfigPages) && !!merged['candidate-base'];
 
-// If candidate-base is set but no page source, give a useful error
-if (merged['candidate-base'] && !hasPageSource) {
-  process.stderr.write('Error: --candidate-base requires a page source (--sitemap, --urls, or pages in config)\n');
+// Guard: explicit page source given without --candidate-base
+if (hasExplicitPageSource && !merged['candidate-base']) {
+  process.stderr.write('Error: --candidate-base <url> is required when using --sitemap or --urls\n');
   process.exit(2);
 }
 
-// If a page source is given but --candidate-base is missing, require it
-if (hasPageSource && !merged['candidate-base']) {
-  process.stderr.write('Error: --candidate-base <url> is required when using --sitemap, --urls, or config pages\n');
+// Guard: --candidate-base given but no page source resolves
+if (merged['candidate-base'] && !hasExplicitPageSource && !hasConfigPages) {
+  process.stderr.write('Error: --candidate-base requires a page source (--sitemap, --urls, or pages in config)\n');
   process.exit(2);
 }
 
