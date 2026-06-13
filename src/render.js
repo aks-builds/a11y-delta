@@ -99,10 +99,10 @@ export function renderJson(newViolations, baselineMeta, candidateMeta, exitCode)
 // ── Color helpers (Warm Studio palette) ─────────────────────────────────────
 
 function useColor() {
-  if (process.env.NO_COLOR === '1') return false;
-  if (process.env.FORCE_COLOR === '0') return false;
+  if (process.env.NO_COLOR) return false;              // any non-empty value
+  if (process.env.FORCE_COLOR === '1') return true;    // must come BEFORE isTTY check
   if (!process.stdout.isTTY) return false;
-  if (process.env.CI && !process.env.FORCE_COLOR) return false;
+  if (process.env.CI) return false;
   return true;
 }
 
@@ -174,15 +174,19 @@ export function renderTableMulti(multiResult, outputStyle = 'per-page') {
 // ── renderGithubCommentMulti ─────────────────────────────────────────────────
 
 export function renderGithubCommentMulti(multiResult) {
-  const { pages, totalNew, failPages, cleanPages } = multiResult;
+  const { pages, totalNew, failPages, cleanPages, errorPages } = multiResult;
   const lines = [];
 
-  lines.push(totalNew === 0
-    ? '## ♿ Accessibility Delta — No new violations ✅'
-    : `## ♿ Accessibility Delta — ${totalNew} new violation${totalNew === 1 ? '' : 's'} across ${failPages} page${failPages === 1 ? '' : 's'}`
-  );
+  if (totalNew === 0 && errorPages === 0) {
+    lines.push('## ♿ Accessibility Delta — No new violations ✅');
+  } else if (totalNew === 0 && errorPages > 0) {
+    lines.push(`## ♿ Accessibility Delta — ⚠️ ${errorPages} page${errorPages === 1 ? '' : 's'} could not be audited`);
+  } else {
+    lines.push(`## ♿ Accessibility Delta — ${totalNew} new violation${totalNew === 1 ? '' : 's'} across ${failPages} page${failPages === 1 ? '' : 's'}`);
+  }
   lines.push('');
 
+  const IMPACT_ORDER_R = { critical: 0, serious: 1, moderate: 2, minor: 3 };
   lines.push('| Page | New | Worst |');
   lines.push('|---|---|---|');
   for (const p of pages) {
@@ -190,8 +194,11 @@ export function renderGithubCommentMulti(multiResult) {
     try { pathname = new URL(p.url).pathname; } catch { pathname = p.url; }
     const worst = p.error ? 'error'
       : p.newViolations.length === 0 ? '—'
-      : (p.newViolations.find(v => v.impact === 'critical') ? 'critical' : p.newViolations[0].impact);
-    lines.push(`| ${pathname} | ${p.newViolations.length} | ${worst} |`);
+      : p.newViolations.reduce(
+          (best, v) => (IMPACT_ORDER_R[v.impact] ?? 99) < (IMPACT_ORDER_R[best] ?? 99) ? v.impact : best,
+          p.newViolations[0].impact
+        );
+    lines.push(`| ${pathname} | ${p.error ? '—' : p.newViolations.length} | ${worst} |`);
   }
   lines.push('');
 

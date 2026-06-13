@@ -221,6 +221,13 @@ test('renderGithubCommentMulti all clean shows no-new heading', () => {
   assert.ok(out.includes('No new violations') || out.includes('✅'));
 });
 
+test('renderGithubCommentMulti with error pages does not show green checkmark in heading', () => {
+  const out = renderGithubCommentMulti(MULTI_WITH_ERROR);
+  const heading = out.split('\n')[0];
+  assert.ok(!heading.includes('✅'), `heading must not contain ✅: ${heading}`);
+  assert.ok(out.includes('⚠️') || out.includes('error') || out.includes('could not'));
+});
+
 // renderJsonMulti
 test('renderJsonMulti produces valid JSON', () => {
   assert.doesNotThrow(() => JSON.parse(renderJsonMulti(MULTI_WITH_FAIL)));
