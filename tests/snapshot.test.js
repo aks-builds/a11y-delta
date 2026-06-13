@@ -118,3 +118,82 @@ test('makeSnapshot preserves file:// URI without calling resolve', () => {
   const vs = makeSnapshot('file:///tmp/snapshot.json', []);
   assert.equal(vs.url, 'file:///tmp/snapshot.json');
 });
+
+// ── New dir + multi-snapshot tests ──────────────────────────────────────────
+
+import { join as j2, dirname as dn2 } from 'node:path';
+import { fileURLToPath as ftu } from 'node:url';
+import { rm } from 'node:fs/promises';
+import {
+  pageFileName, writeSnapshotDir, readSnapshotDir,
+  readMultiSnapshot, writeMultiSnapshot
+} from '../src/snapshot.js';
+
+const __dir2  = dn2(ftu(import.meta.url));
+const SNAP_DIR = j2(__dir2, 'fixtures', 'snapshots-baseline');
+const MULTI_F  = j2(__dir2, 'fixtures', 'multi-baseline.json');
+
+test('pageFileName returns "index.json" for root path', () => {
+  assert.equal(pageFileName('https://staging.example.com/'), 'index.json');
+});
+
+test('pageFileName converts /products/ to "products.json"', () => {
+  assert.equal(pageFileName('https://staging.example.com/products/'), 'products.json');
+});
+
+test('pageFileName joins nested path segments with hyphens', () => {
+  assert.equal(pageFileName('https://staging.example.com/a/b/c'), 'a-b-c.json');
+});
+
+test('readSnapshotDir reads all pages from fixture manifest', async () => {
+  const result = await readSnapshotDir(SNAP_DIR);
+  assert.ok(result.pages['https://staging.example.com/']);
+  assert.ok(result.pages['https://staging.example.com/products/']);
+  assert.equal(result.base, 'https://staging.example.com');
+});
+
+test('readSnapshotDir each page entry is a valid ViolationSet', async () => {
+  const result = await readSnapshotDir(SNAP_DIR);
+  const home = result.pages['https://staging.example.com/'];
+  assert.ok(Array.isArray(home.violations));
+});
+
+test('writeSnapshotDir + readSnapshotDir round-trip', async () => {
+  const dir = j2(tmpdir(), 'a11y-snap-roundtrip');
+  const vs1 = { url: 'https://x.com/', timestamp: 't', violations: [] };
+  const vs2 = { url: 'https://x.com/about/', timestamp: 't', violations: [] };
+  try {
+    await writeSnapshotDir(dir, [
+      { url: 'https://x.com/',       violationSet: vs1 },
+      { url: 'https://x.com/about/', violationSet: vs2 },
+    ]);
+    const result = await readSnapshotDir(dir);
+    assert.ok(result.pages['https://x.com/']);
+    assert.ok(result.pages['https://x.com/about/']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('readMultiSnapshot parses combined snapshot JSON', async () => {
+  const result = await readMultiSnapshot(MULTI_F);
+  assert.ok(result.pages);
+  assert.ok(result.pages['https://staging.example.com/']);
+  assert.equal(result.base, 'https://staging.example.com');
+});
+
+test('writeMultiSnapshot + readMultiSnapshot round-trip', async () => {
+  const f = j2(tmpdir(), 'a11y-multi-rt.json');
+  const pages = {
+    'https://x.com/': { url: 'https://x.com/', timestamp: 't', violations: [] },
+  };
+  try {
+    await writeMultiSnapshot(f, 'https://x.com', pages);
+    const result = await readMultiSnapshot(f);
+    assert.equal(result.base, 'https://x.com');
+    assert.ok(result.pages['https://x.com/']);
+    assert.equal(typeof result.timestamp, 'string');
+  } finally {
+    await unlink(f).catch(() => {});
+  }
+});

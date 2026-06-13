@@ -37,3 +37,52 @@ export function makeSnapshot(url, violations) {
     violations,
   };
 }
+
+export function pageFileName(url) {
+  const { pathname } = new URL(url);
+  const name = pathname.split('/').filter(Boolean).join('-') || 'index';
+  return `${name}.json`;
+}
+
+export async function writeSnapshotDir(dirPath, entries) {
+  await mkdir(dirPath, { recursive: true });
+  const pages = [];
+  for (const { url, violationSet } of entries) {
+    const file = pageFileName(url);
+    await writeSnapshot(violationSet, resolve(dirPath, file));
+    pages.push({ url, file });
+  }
+  const manifest = {
+    base:      entries.length > 0 ? new URL(entries[0].url).origin : '',
+    createdAt: new Date().toISOString(),
+    pages,
+  };
+  await writeFile(resolve(dirPath, '_manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+}
+
+export async function readSnapshotDir(dirPath) {
+  const raw      = await readFile(resolve(dirPath, '_manifest.json'), 'utf8');
+  const manifest = JSON.parse(raw);
+  const pages    = {};
+  for (const { url, file } of manifest.pages) {
+    pages[url] = await readSnapshot(resolve(dirPath, file));
+  }
+  return { base: manifest.base, createdAt: manifest.createdAt, pages };
+}
+
+export async function readMultiSnapshot(filePath) {
+  const raw = await readFile(filePath, 'utf8');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`Invalid multi snapshot: "${filePath}" is not valid JSON`);
+  }
+  return parsed;
+}
+
+export async function writeMultiSnapshot(filePath, base, violationSetsByUrl) {
+  const data = { base, timestamp: new Date().toISOString(), pages: violationSetsByUrl };
+  await mkdir(dirname(resolve(filePath)), { recursive: true });
+  await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
