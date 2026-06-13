@@ -1,25 +1,35 @@
 #!/usr/bin/env node
 // src/cli.js
 import { parseArgs }  from 'node:util';
-import { resolve }    from 'node:path';
+import { resolve, join } from 'node:path';
 import { readSnapshot, writeSnapshot } from './snapshot.js';
 import { diff }       from './diff.js';
-import { renderTable, renderGithubComment, renderJson } from './render.js';
+import { renderTable, renderGithubComment, renderJson,
+         renderTableMulti, renderGithubCommentMulti, renderJsonMulti } from './render.js';
+import { loadConfig, mergeConfig } from './config.js';
 
 let argv;
 try {
   ({ values: argv } = parseArgs({
     options: {
-      baseline:   { type: 'string',  short: 'b' },
-      candidate:  { type: 'string',  short: 'c' },
-      'fail-on':  { type: 'string',  default: 'critical,serious' },
-      format:     { type: 'string',  short: 'f', default: 'table' },
-      save:       { type: 'string' },
-      timeout:    { type: 'string',  default: '30000' },
-      viewport:   { type: 'string',  default: '1280x800' },
-      'wait-for': { type: 'string' },
-      header:     { type: 'string', multiple: true },
-      help:       { type: 'boolean', short: 'h', default: false },
+      baseline:         { type: 'string',  short: 'b' },
+      candidate:        { type: 'string',  short: 'c' },
+      'fail-on':        { type: 'string' },
+      format:           { type: 'string',  short: 'f' },
+      save:             { type: 'string' },
+      timeout:          { type: 'string' },
+      viewport:         { type: 'string' },
+      'wait-for':       { type: 'string' },
+      header:           { type: 'string',  multiple: true },
+      help:             { type: 'boolean', short: 'h', default: false },
+      sitemap:          { type: 'string' },
+      urls:             { type: 'string' },
+      base:             { type: 'string' },
+      'candidate-base': { type: 'string' },
+      concurrency:      { type: 'string' },
+      config:           { type: 'string' },
+      'save-dir':       { type: 'string' },
+      'output-style':   { type: 'string' },
     },
     allowPositionals: false,
     strict: false,
@@ -33,14 +43,29 @@ if (argv.help) {
   process.stdout.write(`
 a11y-delta — catch only new accessibility violations in CI
 
-Usage:
+Usage (single URL):
   a11y-delta --baseline <url|file> --candidate <url|file> [options]
 
-Required:
-  --baseline,  -b  URL or saved snapshot JSON for the base state
-  --candidate, -c  URL or saved snapshot JSON for the new state
+Usage (multi-page):
+  a11y-delta --sitemap <url> --candidate-base <url> [options]
+  a11y-delta --urls <file|list> --base <url> --candidate-base <url> [options]
+  a11y-delta --candidate-base <url> [--config <file>] [options]
 
-Options:
+Single-URL options:
+  --baseline,  -b     URL or saved snapshot JSON for the base state
+  --candidate, -c     URL or saved snapshot JSON for the new state
+
+Multi-page options:
+  --sitemap     <url>        Fetch sitemap.xml and audit all discovered pages
+  --urls        <file|list>  File (one URL per line) or comma-separated list
+  --base        <url>        Base URL for resolving relative page paths
+  --candidate-base <url>     Candidate base URL (required for multi-page)
+  --concurrency <n>          Max parallel browsers (default: 3)
+  --config      <file>       Config file path (default: .a11y-delta.yml in CWD)
+  --save-dir    <dir>        Save per-page candidate snapshots to directory
+  --output-style <style>     per-page (default) | failures-only
+
+Shared options:
   --fail-on <impacts>   Comma-separated impact levels that exit 1 (default: critical,serious)
   --save    <file>      Save candidate audit as JSON for future baseline use
   --format, -f          Output: table (default) | github-comment | json
@@ -49,30 +74,84 @@ Options:
   --wait-for <selector> CSS selector to wait for before auditing
   --header  <name:val>  HTTP header for Playwright (repeatable)
   --help,   -h          Show help
-
-Prerequisites (URL mode only):
-  npx playwright install chromium
 `);
   process.exit(0);
 }
 
-if (!argv.baseline) {
+// Load config file and merge with CLI args
+const configPath = argv.config ? resolve(argv.config) : join(process.cwd(), '.a11y-delta.yml');
+let merged;
+try {
+  const fileConfig = await loadConfig(configPath, { required: !!argv.config });
+  merged = mergeConfig(fileConfig, argv);
+} catch (err) {
+  process.stderr.write(`Error: ${err.message}\n`);
+  process.exit(2);
+}
+
+// ── Multi-page mode ──────────────────────────────────────────────────────────
+
+// Explicit CLI page sources (sitemap or urls flag)
+const hasExplicitPageSource = !!(merged.sitemap || merged.urls);
+// Config pages (from .a11y-delta.yml) only count when candidate-base is also set
+const hasConfigPages = merged.pages.length > 0;
+const isMulti = (hasExplicitPageSource || hasConfigPages) && !!merged['candidate-base'];
+
+// Guard: explicit page source given without --candidate-base
+if (hasExplicitPageSource && !merged['candidate-base']) {
+  process.stderr.write('Error: --candidate-base <url> is required when using --sitemap or --urls\n');
+  process.exit(2);
+}
+
+// Guard: --candidate-base given but no page source resolves
+if (merged['candidate-base'] && !hasExplicitPageSource && !hasConfigPages) {
+  process.stderr.write('Error: --candidate-base requires a page source (--sitemap, --urls, or pages in config)\n');
+  process.exit(2);
+}
+
+if (isMulti) {
+  try {
+    const { runMulti } = await import('./multi.js');
+    const multiResult = await runMulti(merged);
+    let output;
+    if (merged.format === 'json') {
+      output = renderJsonMulti(multiResult);
+    } else if (merged.format === 'github-comment') {
+      output = renderGithubCommentMulti(multiResult);
+    } else {
+      output = renderTableMulti(multiResult, merged['output-style']);
+    }
+    process.stdout.write(output + '\n');
+    process.exit(multiResult.exitCode);
+  } catch (err) {
+    process.stderr.write(`Error: ${err.message}\n`);
+    process.exit(2);
+  }
+}
+
+// ── Single-URL mode (v0.1.0 behaviour — unchanged) ───────────────────────────
+
+if (!merged.baseline) {
   process.stderr.write('Error: --baseline <url|file> is required\n');
   process.exit(2);
 }
-if (!argv.candidate) {
+if (!merged.candidate) {
   process.stderr.write('Error: --candidate <url|file> is required\n');
   process.exit(2);
 }
 
-// Severity order: index 0 = most severe. A violation triggers failure when its
-// impact level is >= (i.e. index <=) the least-severe threshold in --fail-on.
 const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'];
 
-const failOnThresholds = (argv['fail-on'] ?? 'critical,serious')
+const failOnThresholds = (merged['fail-on'] ?? 'critical,serious')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
-// Highest index among the listed thresholds = least-severe threshold = broadest trigger.
+const VALID_IMPACTS = ['critical', 'serious', 'moderate', 'minor'];
+const unknownImpacts = failOnThresholds.filter(t => !VALID_IMPACTS.includes(t));
+if (unknownImpacts.length > 0) {
+  process.stderr.write(`Error: Unknown fail-on value(s): ${unknownImpacts.join(', ')}. Valid values: ${VALID_IMPACTS.join(', ')}\n`);
+  process.exit(2);
+}
+
 const failOnMinIndex = Math.max(
   ...failOnThresholds.map(t => {
     const i = IMPACT_ORDER.indexOf(t);
@@ -93,52 +172,43 @@ async function resolveInput(input) {
   if (isUrl(input)) {
     const { auditUrl } = await import('./audit.js');
     const headers = {};
-    if (argv.header) {
-      for (const h of [argv.header].flat()) {
-        const i = h.indexOf(':');
-        if (i > 0) headers[h.slice(0, i).trim()] = h.slice(i + 1).trim();
-      }
+    for (const h of merged.header) {
+      const i = h.indexOf(':');
+      if (i > 0) headers[h.slice(0, i).trim()] = h.slice(i + 1).trim();
     }
     return auditUrl(input, {
-      timeout:  parseInt(argv.timeout, 10),
-      viewport: argv.viewport,
-      waitFor:  argv['wait-for'],
+      timeout:  merged.timeout,
+      viewport: merged.viewport,
+      waitFor:  merged['wait-for'],
       headers,
     });
   }
-  // File mode — --header silently ignored (no browser launched)
   return readSnapshot(resolve(input));
 }
 
 try {
   const [baselineVS, candidateVS] = await Promise.all([
-    resolveInput(argv.baseline),
-    resolveInput(argv.candidate),
+    resolveInput(merged.baseline),
+    resolveInput(merged.candidate),
   ]);
 
-  if (argv.save) {
-    await writeSnapshot(candidateVS, resolve(argv.save));
-    process.stderr.write(`Candidate snapshot saved to ${argv.save}\n`);
+  if (merged.save) {
+    await writeSnapshot(candidateVS, resolve(merged.save));
+    process.stderr.write(`Candidate snapshot saved to ${merged.save}\n`);
   }
 
   const newViolations = diff(baselineVS, candidateVS);
 
-  const baselineMeta  = {
-    url:            baselineVS.url,
-    violationCount: baselineVS.violations.flatMap(v => v.nodes).length,
-  };
-  const candidateMeta = {
-    url:            candidateVS.url,
-    violationCount: candidateVS.violations.flatMap(v => v.nodes).length,
-  };
+  const baselineMeta  = { url: baselineVS.url,  violationCount: baselineVS.violations.flatMap(v => v.nodes).length };
+  const candidateMeta = { url: candidateVS.url, violationCount: candidateVS.violations.flatMap(v => v.nodes).length };
 
   const shouldFail = newViolations.some(v => shouldViolationFail(v.impact));
   const exitCode   = shouldFail ? 1 : 0;
 
   let output;
-  if (argv.format === 'json') {
+  if (merged.format === 'json') {
     output = renderJson(newViolations, baselineMeta, candidateMeta, exitCode);
-  } else if (argv.format === 'github-comment') {
+  } else if (merged.format === 'github-comment') {
     output = renderGithubComment(newViolations, baselineMeta, candidateMeta);
   } else {
     output = renderTable(newViolations, baselineMeta, candidateMeta);

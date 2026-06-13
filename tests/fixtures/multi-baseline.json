@@ -1,0 +1,30 @@
+{
+  "base": "https://staging.example.com",
+  "timestamp": "2026-06-12T10:00:00.000Z",
+  "pages": {
+    "https://staging.example.com/": {
+      "url": "https://staging.example.com/",
+      "timestamp": "2026-06-12T10:00:00.000Z",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast",
+          "nodes": [
+            {
+              "target": ["button.cta"],
+              "html": "<button class=\"cta\">Buy</button>",
+              "failureSummary": "Fix any: insufficient color contrast"
+            }
+          ]
+        }
+      ]
+    },
+    "https://staging.example.com/products/": {
+      "url": "https://staging.example.com/products/",
+      "timestamp": "2026-06-12T10:00:00.000Z",
+      "violations": []
+    }
+  }
+}
