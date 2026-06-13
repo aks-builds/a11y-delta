@@ -134,3 +134,15 @@ test('resolvePages urls takes precedence over config pages', async () => {
   assert.equal(pages.length, 1);
   assert.equal(pages[0].candidateUrl, 'https://preview.example.com/special/');
 });
+
+test('resolvePages resolves --urls single relative URL (no comma)', async () => {
+  const pages = await resolvePages({
+    urls: '/about/',
+    base: 'https://staging.example.com',
+    'candidate-base': 'https://preview.example.com',
+    pages: [],
+  });
+  assert.equal(pages.length, 1);
+  assert.equal(pages[0].baselineUrl,  'https://staging.example.com/about/');
+  assert.equal(pages[0].candidateUrl, 'https://preview.example.com/about/');
+});

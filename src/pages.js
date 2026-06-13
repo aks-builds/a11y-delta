@@ -15,16 +15,17 @@ function resolveUrl(path, base) {
 
 function toCandidateUrl(baselineUrl, candidateBase) {
   const parsed = new URL(baselineUrl);
-  const base   = new URL(candidateBase.endsWith('/') ? candidateBase : candidateBase + '/');
-  return base.origin + parsed.pathname + parsed.search + parsed.hash;
+  const pathAndQuery = parsed.pathname + parsed.search + parsed.hash;
+  return new URL(pathAndQuery, candidateBase).href;
 }
 
 function looksLikeFilePath(raw) {
-  // Absolute OS path (Windows drive letter or Unix root with extension)
+  if (isUrl(raw)) return false;
+  // Windows drive letter: C:\... or C:/...
   if (/^[A-Za-z]:[/\\]/.test(raw)) return true;
-  // Has a file extension in the last segment (e.g. pages.txt, sitemap.csv)
+  // Known file extensions only (not arbitrary dots in URL path segments)
   const last = raw.split(/[/\\]/).pop() ?? '';
-  return last.includes('.');
+  return /\.(txt|csv|json|xml|text)$/i.test(last);
 }
 
 async function resolveUrlList(raw) {
@@ -58,6 +59,8 @@ export async function resolvePages(config) {
   if (urls) {
     if (!candBase) throw new Error('--candidate-base is required with --urls');
     const list = await resolveUrlList(urls);
+    const hasRelative = list.some(u => !isUrl(u));
+    if (hasRelative && !base) throw new Error('--base is required with --urls when paths are relative');
     return list.map(u => ({
       baselineUrl:  resolveUrl(u, base),
       candidateUrl: resolveUrl(u, candBase),
