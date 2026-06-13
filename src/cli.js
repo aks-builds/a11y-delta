@@ -100,6 +100,12 @@ if (merged['candidate-base'] && !hasPageSource) {
   process.exit(2);
 }
 
+// If a page source is given but --candidate-base is missing, require it
+if (hasPageSource && !merged['candidate-base']) {
+  process.stderr.write('Error: --candidate-base <url> is required when using --sitemap, --urls, or config pages\n');
+  process.exit(2);
+}
+
 if (isMulti) {
   try {
     const { runMulti } = await import('./multi.js');

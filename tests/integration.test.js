@@ -128,3 +128,54 @@ test('CLI default --fail-on exits 1 for new serious violation (not just critical
     await unlink(seriousCandidate).catch(() => {});
   }
 });
+
+// ── Multi-page CLI tests ─────────────────────────────────────────────────────
+
+const SNAP_DIR = join(__dirname, 'fixtures', 'snapshots-baseline');
+
+test('CLI exits 2 when --urls given without --candidate-base', () => {
+  const { exitCode, stderr } = run(`--urls "/,/products/" --base "https://staging.example.com"`, true);
+  assert.equal(exitCode, 2);
+  assert.ok(stderr.includes('candidate-base'));
+});
+
+test('CLI exits 2 when --sitemap given without --candidate-base', () => {
+  const { exitCode, stderr } = run(`--sitemap "https://staging.example.com/sitemap.xml"`, true);
+  assert.equal(exitCode, 2);
+  assert.ok(stderr.includes('candidate-base'));
+});
+
+test('CLI exits 2 when --urls file does not exist', () => {
+  const { exitCode, stderr } = run(
+    `--urls "/nonexistent/pages.txt" --base "https://b.com" --candidate-base "https://c.com"`,
+    true
+  );
+  assert.equal(exitCode, 2);
+  assert.ok(stderr.includes('not found') || stderr.includes('Error'));
+});
+
+test('CLI exits 2 when --config points to a missing file', () => {
+  const { exitCode, stderr } = run(
+    `--config "/nonexistent/config.yml" --baseline "${BASELINE}" --candidate "${SAME}"`,
+    true
+  );
+  assert.equal(exitCode, 2);
+  assert.ok(stderr.includes('not found') || stderr.includes('Error'));
+});
+
+test('CLI exits 2 when --concurrency is 0', () => {
+  const { exitCode, stderr } = run(
+    `--urls "/,/products/" --base "https://b.com" --candidate-base "https://c.com" --concurrency 0`,
+    true
+  );
+  assert.equal(exitCode, 2);
+  assert.ok(stderr.includes('positive integer') || stderr.includes('Error'));
+});
+
+test('CLI --help includes multi-page flags', () => {
+  const { stdout } = run('--help');
+  assert.ok(stdout.includes('--sitemap'));
+  assert.ok(stdout.includes('--urls'));
+  assert.ok(stdout.includes('--candidate-base'));
+  assert.ok(stdout.includes('--concurrency'));
+});
