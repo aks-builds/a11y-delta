@@ -45,6 +45,15 @@ export function pageFileName(url) {
 }
 
 export async function writeSnapshotDir(dirPath, entries) {
+  // Check for filename collisions upfront
+  const seen = new Map();
+  for (const { url } of entries) {
+    const file = pageFileName(url);
+    if (seen.has(file)) {
+      throw new Error(`Snapshot filename collision: both "${seen.get(file)}" and "${url}" map to "${file}". Normalize URLs before saving.`);
+    }
+    seen.set(file, url);
+  }
   await mkdir(dirPath, { recursive: true });
   const pages = [];
   for (const { url, violationSet } of entries) {
@@ -61,7 +70,12 @@ export async function writeSnapshotDir(dirPath, entries) {
 }
 
 export async function readSnapshotDir(dirPath) {
-  const raw      = await readFile(resolve(dirPath, '_manifest.json'), 'utf8');
+  let raw;
+  try {
+    raw = await readFile(resolve(dirPath, '_manifest.json'), 'utf8');
+  } catch (err) {
+    throw new Error(`Cannot read snapshot directory "${dirPath}": ${err.message}`);
+  }
   const manifest = JSON.parse(raw);
   const pages    = {};
   for (const { url, file } of manifest.pages) {
@@ -77,6 +91,9 @@ export async function readMultiSnapshot(filePath) {
     parsed = JSON.parse(raw);
   } catch {
     throw new Error(`Invalid multi snapshot: "${filePath}" is not valid JSON`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || typeof parsed.pages !== 'object') {
+    throw new Error(`Invalid multi snapshot: "${filePath}" is missing required "pages" object`);
   }
   return parsed;
 }

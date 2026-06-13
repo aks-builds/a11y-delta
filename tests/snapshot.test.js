@@ -121,17 +121,14 @@ test('makeSnapshot preserves file:// URI without calling resolve', () => {
 
 // ── New dir + multi-snapshot tests ──────────────────────────────────────────
 
-import { join as j2, dirname as dn2 } from 'node:path';
-import { fileURLToPath as ftu } from 'node:url';
 import { rm } from 'node:fs/promises';
 import {
   pageFileName, writeSnapshotDir, readSnapshotDir,
   readMultiSnapshot, writeMultiSnapshot
 } from '../src/snapshot.js';
 
-const __dir2  = dn2(ftu(import.meta.url));
-const SNAP_DIR = j2(__dir2, 'fixtures', 'snapshots-baseline');
-const MULTI_F  = j2(__dir2, 'fixtures', 'multi-baseline.json');
+const SNAP_DIR = join(__dirname, 'fixtures', 'snapshots-baseline');
+const MULTI_F  = join(__dirname, 'fixtures', 'multi-baseline.json');
 
 test('pageFileName returns "index.json" for root path', () => {
   assert.equal(pageFileName('https://staging.example.com/'), 'index.json');
@@ -150,6 +147,7 @@ test('readSnapshotDir reads all pages from fixture manifest', async () => {
   assert.ok(result.pages['https://staging.example.com/']);
   assert.ok(result.pages['https://staging.example.com/products/']);
   assert.equal(result.base, 'https://staging.example.com');
+  assert.equal(typeof result.createdAt, 'string');
 });
 
 test('readSnapshotDir each page entry is a valid ViolationSet', async () => {
@@ -159,7 +157,7 @@ test('readSnapshotDir each page entry is a valid ViolationSet', async () => {
 });
 
 test('writeSnapshotDir + readSnapshotDir round-trip', async () => {
-  const dir = j2(tmpdir(), 'a11y-snap-roundtrip');
+  const dir = join(tmpdir(), 'a11y-snap-roundtrip');
   const vs1 = { url: 'https://x.com/', timestamp: 't', violations: [] };
   const vs2 = { url: 'https://x.com/about/', timestamp: 't', violations: [] };
   try {
@@ -183,7 +181,7 @@ test('readMultiSnapshot parses combined snapshot JSON', async () => {
 });
 
 test('writeMultiSnapshot + readMultiSnapshot round-trip', async () => {
-  const f = j2(tmpdir(), 'a11y-multi-rt.json');
+  const f = join(tmpdir(), 'a11y-multi-rt.json');
   const pages = {
     'https://x.com/': { url: 'https://x.com/', timestamp: 't', violations: [] },
   };
