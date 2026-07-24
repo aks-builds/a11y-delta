@@ -12,6 +12,8 @@ and reports **only the violations your PR introduced**. Pre-existing debt never 
 [![npm version](https://img.shields.io/npm/v/a11y-delta.svg)](https://www.npmjs.com/package/a11y-delta)
 [![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+<img src=".github/media/how-it-works.png" width="900" alt="How a11y-delta works: Playwright audits a baseline and a candidate with axe-core, diffs the violations, and gates CI only on new ones above the --fail-on threshold" />
+
 </div>
 
 ---
